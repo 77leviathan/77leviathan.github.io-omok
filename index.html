@@ -5,8 +5,21 @@
   <title>오목 온라인</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; }
-    #board { display: grid; grid-template: repeat(15, 1fr) / repeat(15, 1fr); max-width: 90vmin; margin: auto; aspect-ratio: 1 / 1; }
-    .cell { border: 1px solid #999; position: relative; background-color: #f4e2c4; }
+    #board {
+      display: grid;
+      grid-template: repeat(15, 1fr) / repeat(15, 1fr);
+      max-width: 90vmin;
+      margin: auto;
+      aspect-ratio: 1 / 1;
+    }
+    .cell {
+      border: 1px solid #999;
+      background-color: #f4e2c4;
+      position: relative;
+    }
+    .cell.selected {
+      outline: 3px solid yellow;
+    }
     .stone {
       position: absolute;
       width: 100%;
@@ -19,7 +32,7 @@
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCReQmN7LdlNNP1_rdqUD4NZuOHOmIw6uE",
@@ -28,8 +41,7 @@
       projectId: "omok-online-7edda",
       storageBucket: "omok-online-7edda.firebasestorage.app",
       messagingSenderId: "26980549630",
-      appId: "1:26980549630:web:465e91e2a43d3a8581f6af",
-      measurementId: "G-ZSS6QSQQCW"
+      appId: "1:26980549630:web:465e91e2a43d3a8581f6af"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -43,6 +55,7 @@
     let myStone = null;
     let winner = 0;
     let roomId = "";
+    let selected = null;
 
     function createBoard() {
       boardEl.innerHTML = '';
@@ -52,7 +65,7 @@
           cell.className = 'cell';
           cell.dataset.x = x;
           cell.dataset.y = y;
-          cell.addEventListener('click', () => play(x, y));
+          cell.addEventListener('click', () => select(x, y));
           boardEl.appendChild(cell);
         }
       }
@@ -63,14 +76,26 @@
         row.forEach((val, x) => {
           const cell = boardEl.children[y * SIZE + x];
           cell.innerHTML = '';
+          cell.classList.remove('selected');
+          if (selected && selected.x == x && selected.y == y) {
+            cell.classList.add('selected');
+          }
           if (val === 1 || val === 2) {
             const stone = document.createElement('div');
             stone.className = 'stone';
-            stone.style.backgroundImage = `url(${val === 1 ? 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Go_ishi_black.svg' : 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Go_ishi_white.svg'})`;
+            stone.style.backgroundImage = `url(${val === 1
+              ? 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Go_ishi_black.svg'
+              : 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Go_ishi_white.svg'})`;
             cell.appendChild(stone);
           }
         });
       });
+    }
+
+    function select(x, y) {
+      if (winner || board[y][x] !== 0) return;
+      selected = { x, y };
+      drawBoard();
     }
 
     function checkVictory(x, y, color) {
@@ -92,13 +117,16 @@
       return false;
     }
 
-    function play(x, y) {
-      if (myStone !== turn || winner || board[y][x] !== 0) return;
+    function placeStone() {
+      if (!selected || myStone !== turn || winner) return;
+      const { x, y } = selected;
+      if (board[y][x] !== 0) return;
       board[y][x] = turn;
       if (checkVictory(x, y, turn)) {
         winner = turn;
       }
       turn = 3 - turn;
+      selected = null;
       save();
     }
 
@@ -147,6 +175,8 @@
       joinRoom(code);
     });
 
+    document.getElementById('placeStone').addEventListener('click', placeStone);
+
     createBoard();
   </script>
 </head>
@@ -159,5 +189,6 @@
   </div>
   <div id="status">방을 만들거나 입장하세요</div>
   <div id="board"></div>
+  <button id="placeStone">🪙 착수</button>
 </body>
 </html>
