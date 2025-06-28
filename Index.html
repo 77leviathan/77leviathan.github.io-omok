@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>오목 온라인</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 0; }
+    #board { display: grid; grid-template: repeat(15, 1fr) / repeat(15, 1fr); max-width: 90vmin; margin: auto; aspect-ratio: 1 / 1; }
+    .cell { border: 1px solid #999; position: relative; background-color: #f4e2c4; }
+    .stone {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+    }
+    #status { margin: 10px; font-weight: bold; }
+    input, button { margin: 5px; font-size: 16px; }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCReQmN7LdlNNP1_rdqUD4NZuOHOmIw6uE",
+      authDomain: "omok-online-7edda.firebaseapp.com",
+      databaseURL: "https://omok-online-7edda-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "omok-online-7edda",
+      storageBucket: "omok-online-7edda.firebasestorage.app",
+      messagingSenderId: "26980549630",
+      appId: "1:26980549630:web:465e91e2a43d3a8581f6af",
+      measurementId: "G-ZSS6QSQQCW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const SIZE = 15;
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    let board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    let turn = 1;
+    let myStone = null;
+    let winner = 0;
+    let roomId = "";
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+          cell.addEventListener('click', () => play(x, y));
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function drawBoard() {
+      board.forEach((row, y) => {
+        row.forEach((val, x) => {
+          const cell = boardEl.children[y * SIZE + x];
+          cell.innerHTML = '';
+          if (val === 1 || val === 2) {
+            const stone = document.createElement('div');
+            stone.className = 'stone';
+            stone.style.backgroundImage = `url(${val === 1 ? 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Go_ishi_black.svg' : 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Go_ishi_white.svg'})`;
+            cell.appendChild(stone);
+          }
+        });
+      });
+    }
+
+    function checkVictory(x, y, color) {
+      const dir = [[1,0],[0,1],[1,1],[1,-1]];
+      for (const [dx, dy] of dir) {
+        let count = 1;
+        for (let i = 1; i <= 4; i++) {
+          let nx = x + dx * i, ny = y + dy * i;
+          if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE || board[ny][nx] !== color) break;
+          count++;
+        }
+        for (let i = 1; i <= 4; i++) {
+          let nx = x - dx * i, ny = y - dy * i;
+          if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE || board[ny][nx] !== color) break;
+          count++;
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+
+    function play(x, y) {
+      if (myStone !== turn || winner || board[y][x] !== 0) return;
+      board[y][x] = turn;
+      if (checkVictory(x, y, turn)) {
+        winner = turn;
+      }
+      turn = 3 - turn;
+      save();
+    }
+
+    function save() {
+      set(ref(db, `rooms/${roomId}`), { board, turn, winner });
+    }
+
+    function joinRoom(code) {
+      roomId = code;
+      const roomRef = ref(db, `rooms/${roomId}`);
+      onValue(roomRef, snapshot => {
+        const data = snapshot.val();
+        if (!data) return;
+        board = data.board || Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+        turn = data.turn || 1;
+        winner = data.winner || 0;
+        drawBoard();
+        if (winner) {
+          statusEl.textContent = winner === myStone ? '🎉 당신이 이겼습니다!' : '😭 졌습니다!';
+        } else {
+          statusEl.textContent = myStone === turn ? '당신의 차례입니다.' : '상대방 차례입니다.';
+        }
+      });
+    }
+
+    document.getElementById('createRoom').addEventListener('click', () => {
+      const newId = Math.random().toString(36).substring(2, 8);
+      roomId = newId;
+      board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      turn = 1;
+      winner = 0;
+      myStone = 1;
+      createBoard();
+      save();
+      joinRoom(roomId);
+      document.getElementById('roomCode').value = roomId;
+      alert(`방 코드: ${roomId} (상대에게 알려주세요)`);
+    });
+
+    document.getElementById('joinRoom').addEventListener('click', () => {
+      const code = document.getElementById('roomCode').value.trim();
+      if (!code) return alert('방 코드를 입력하세요');
+      roomId = code;
+      myStone = 2;
+      createBoard();
+      joinRoom(code);
+    });
+
+    createBoard();
+  </script>
+</head>
+<body>
+  <h2>🕹️ 오목 온라인</h2>
+  <div>
+    <input id="roomCode" placeholder="방 코드 입력 또는 생성" />
+    <button id="createRoom">방 만들기</button>
+    <button id="joinRoom">입장</button>
+  </div>
+  <div id="status">방을 만들거나 입장하세요</div>
+  <div id="board"></div>
+</body>
+</html>
