@@ -1,0 +1,77 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: sans-serif;
+  background-color: #f4e2c4;
+}
+
+#room-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#room-screen input {
+  padding: 12px;
+  font-size: 18px;
+  width: 200px;
+  margin-top: 20px;
+}
+
+#room-screen button {
+  margin-top: 10px;
+  font-size: 18px;
+  padding: 10px 20px;
+}
+
+#room-screen .error {
+  color: red;
+  margin-top: 10px;
+}
+
+#game-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#top-bar, #bottom-bar {
+  flex: 0 0 50px;
+  background-color: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#board {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  grid-template-rows: repeat(15, 1fr);
+  border: 2px solid #555;
+}
+
+.cell {
+  border: 1px solid #999;
+  background-color: #f4e2c4;
+  position: relative;
+}
+
+.cell.selected {
+  outline: 3px solid yellow;
+}
+
+.stone {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+}
